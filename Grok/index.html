@@ -1,1 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Котокликер ★★★</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #1e0533, #0f0a1a);
+      color: #eee;
+      overflow: hidden;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    #game {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #cat {
+      width: 260px;
+      height: 260px;
+      cursor: pointer;
+      transition: transform 0.08s;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 30px #ff88ee77);
+    }
+    #cat:active {
+      transform: scale(0.88);
+    }
+    #score {
+      font-size: 4.8rem;
+      font-weight: 900;
+      margin: 20px 0 8px;
+      text-shadow: 0 0 30px #ff44ff;
+    }
+    #level {
+      font-size: 1.6rem;
+      color: #ff88ff;
+      margin-bottom: 30px;
+    }
+    .particle {
+      position: absolute;
+      pointer-events: none;
+      font-size: 2.4rem;
+      font-weight: bold;
+      color: #ffdd44;
+      text-shadow: 0 0 12px #ff8800;
+      animation: floatUp 1.2s forwards;
+      user-select: none;
+    }
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-140px) scale(1.4); }
+    }
+    #upgrades {
+      position: absolute;
+      bottom: 20px;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 0 20px;
+    }
+    .upgrade-btn {
+      background: rgba(40,20,60,0.7);
+      border: 2px solid #aa44ff;
+      border-radius: 12px;
+      padding: 12px 20px;
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      min-width: 160px;
+      text-align: center;
+      transition: all 0.15s;
+      backdrop-filter: blur(4px);
+    }
+    .upgrade-btn:hover {
+      background: rgba(70,40,100,0.9);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px #aa44ff44;
+    }
+    .upgrade-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .cost {
+      color: #ffdd88;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
 
+<div id="game">
+  <div id="score">0</div>
+  <div id="level">Уровень 1 • Котёнок</div>
+  <img id="cat" src="https://images.emojiterra.com/google/android-12l/512px/1f63a.png" alt="cat" draggable="false">
+
+  <div id="upgrades">
+    <button class="upgrade-btn" id="btn1">+1 за клик<br><span class="cost">10</span></button>
+    <button class="upgrade-btn" id="btn2">Автоклик 1/сек<br><span class="cost">60</span></button>
+    <button class="upgrade-btn" id="btn3">Множитель ×2<br><span class="cost">400</span></button>
+    <button class="upgrade-btn" id="btn4">Автоклик ×3<br><span class="cost">1800</span></button>
+  </div>
+</div>
+
+<script>
+let score = 0;
+let clickValue = 1;
+let autoValue = 0;
+let multiplier = 1;
+
+const scoreEl   = document.getElementById('score');
+const levelEl   = document.getElementById('level');
+const cat       = document.getElementById('cat');
+
+const upgrades = [
+  { el: document.getElementById('btn1'), cost:  10, type: 'click',   value: 1   },
+  { el: document.getElementById('btn2'), cost:  60, type: 'auto',    value: 1   },
+  { el: document.getElementById('btn3'), cost: 400, type: 'multi',   value: 2   },
+  { el: document.getElementById('btn4'), cost:1800, type: 'auto',    value: 3   },
+];
+
+function updateDisplay() {
+  scoreEl.textContent = Math.floor(score).toLocaleString();
+  
+  let lvl = 1;
+  if      (score > 5e6) lvl = 10;
+  else if (score > 1e6) lvl = 9;
+  else if (score > 250000) lvl = 8;
+  else if (score > 50000)  lvl = 7;
+  else if (score > 10000)  lvl = 6;
+  else if (score > 2500)   lvl = 5;
+  else if (score > 500)    lvl = 4;
+  else if (score > 100)    lvl = 3;
+  else if (score > 20)     lvl = 2;
+
+  levelEl.textContent = `Уровень ${lvl} • ${['Котёнок','Юный кот','Кот','Взрослый кот','Босс котов','Кот-магнат','Кот-миллионер','Кот-миллиардер','Кот-император','КОТ-БОГ'][lvl-1]}`;
+}
+
+function createParticle(x, y) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.textContent = `+${clickValue * multiplier}`;
+  p.style.left = x + 'px';
+  p.style.top  = y + 'px';
+  document.body.appendChild(p);
+  setTimeout(() => p.remove(), 1300);
+}
+
+function buyUpgrade(up) {
+  if (score < up.cost) return;
+  score -= up.cost;
+
+  if (up.type === 'click') {
+    clickValue += up.value;
+  } else if (up.type === 'auto') {
+    autoValue += up.value;
+  } else if (up.type === 'multi') {
+    multiplier *= up.value;
+  }
+
+  // удорожание
+  up.cost = Math.floor(up.cost * 2.3);
+  up.el.querySelector('.cost').textContent = up.cost.toLocaleString();
+
+  updateDisplay();
+  updateButtons();
+}
+
+function updateButtons() {
+  upgrades.forEach(u => {
+    u.el.disabled = score < u.cost;
+    u.el.querySelector('.cost').textContent = u.cost.toLocaleString();
+  });
+}
+
+cat.onclick = e => {
+  score += clickValue * multiplier;
+  createParticle(e.clientX, e.clientY);
+  updateDisplay();
+  updateButtons();
+};
+
+// Автоклик
+setInterval(() => {
+  if (autoValue > 0) {
+    score += autoValue * multiplier * 0.1; // 10 тиков в секунду
+    updateDisplay();
+    updateButtons();
+  }
+}, 100);
+
+// Покупка улучшений
+upgrades.forEach(u => {
+  u.el.onclick = () => buyUpgrade(u);
+});
+
+// запуск
+updateDisplay();
+updateButtons();
+</script>
+</body>
+</html>
